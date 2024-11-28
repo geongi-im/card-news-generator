@@ -6,6 +6,7 @@ from news_fetcher import NewsFetcher
 from news_analyzer import NewsAnalyzer
 import hashlib
 from datetime import datetime
+from post_instagram import InstagramAPI
 
 def get_text_width(text, font):
     """텍스트의 실제 픽셀 너비를 계산"""
@@ -44,7 +45,7 @@ def draw_rounded_rectangle(draw, coords, radius, fill):
     draw.ellipse([x1, y2 - diameter, x1 + diameter, y2], fill=fill)  # 좌하단
     draw.ellipse([x2 - diameter, y2 - diameter, x2, y2], fill=fill)  # 우하단
 
-def create_card_news(title, content, hashtags, image_number):
+def create_news_card_image(title, content, hashtags, output_path):
     background_path = os.path.join('img', 'background_card_blank.png')
     korean_font_path = os.path.join('fonts', 'NanumBarunGothicBold.ttf')
 
@@ -156,65 +157,104 @@ def create_card_news(title, content, hashtags, image_number):
     source_text = "※ 출처 : MQ(Money Quotient)"
     draw.text((600, 858), source_text, font=source_font, fill=(100, 100, 100))
 
-    # 오늘 날짜와 순서를 포함한 파일명으로 저장
-    os.makedirs('output', exist_ok=True)
-    today = datetime.now().strftime('%Y%m%d')
-    output_filename = f"{today}_{image_number}.png"
-    output_path = os.path.join('output', output_filename)
+    # 이미지 저장
     img.save(output_path)
-    print(f"카드뉴스가 생성되었습니다: {output_path}")
+
+def create_card_news(news_results):
+    """뉴스 결과를 기반으로 카드 뉴스 이미지 생성"""
+    generated_images = []
+    
+    for idx, news in enumerate(news_results, 1):
+        try:
+            print(f"=== 뉴스 {idx} 처리 중 ===")
+            
+            # 뉴스 분석
+            analyzer = NewsAnalyzer()
+            analysis_result = analyzer.analyze_news(news['title'], news['content'])
+            
+            if not analysis_result:
+                print(f"뉴스 {idx} 분석 실패")
+                continue
+                
+            # 이미지 생성
+            today = datetime.now().strftime('%Y%m%d')
+            output_path = f"output/{today}_{idx}.png"
+            os.makedirs("output", exist_ok=True)
+            
+            create_news_card_image(
+                title=analysis_result['title'],
+                content=analysis_result['content'],
+                hashtags=analysis_result['hashtag'],
+                output_path=output_path
+            )
+            
+            # 생성된 이미지 경로 저장
+            generated_images.append(output_path)
+            print(f"뉴스 카드 {idx} 생성 완료: {output_path}")
+            
+        except Exception as e:
+            print(f"뉴스 {idx} 처리 중 오류 발생: {str(e)}")
+            continue
+    
+    return generated_images
+
+def upload_to_instagram(image_paths):
+    """생성된 이미지를 Instagram에 업로드"""
+    try:
+        # 도메인 URL 가져오기
+        domain_url = os.getenv("DOMAIN_URL")
+        if not domain_url:
+            raise ValueError("DOMAIN_URL이 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        
+        # 이미지 URL 리스트 생성
+        image_urls = [f"{domain_url}/card_news_generator/{path}" for path in image_paths]
+        
+        # Instagram API 초기화 및 업로드
+        instagram = InstagramAPI()
+        result = instagram.post_image(image_urls)
+        
+        if result["success"]:
+            print(f"Instagram 업로드 성공! 게시물 ID: {result['post_id']}")
+            print(result["status"])
+            return True
+        else:
+            print(f"Instagram 업로드 실패: {result['error']}")
+            return False
+            
+    except Exception as e:
+        print(f"Instagram 업로드 중 오류 발생: {str(e)}")
+        return False
 
 def main():
-    # 1. 뉴스 검색 (증시 이슈로 고정, 3개)
-    fetcher = NewsFetcher()
-    news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 2)
-    
-    if not news_results:
-        print("검색 결과가 없습니다.")
-        return
-    
-    # 중복 URL 제거
-    unique_news = []
-    seen_urls = set()
-    for news in news_results:
-        if news['source_url'] not in seen_urls:
-            unique_news.append(news)
-            seen_urls.add(news['source_url'])
-    
-    analyzer = NewsAnalyzer()
-    
-    print("\n=== 선택된 뉴스 ===")
-    for i, news in enumerate(unique_news, 1):
-        print(f"{i}. {news['title']}")
-    
-    # 각 뉴스에 대해 분석 및 이미지 생성
-    for i, news in enumerate(unique_news, 1):
-        print(f"\n[{i}/{len(unique_news)}] 뉴스 분석 및 이미지 생성 중...")
+    try:
+        # 뉴스 검색
+        fetcher = NewsFetcher()
+        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 2)
         
-        # 뉴스 분석
-        analysis_result = analyzer.analyze_news(
-            title=news['title'],
-            content=news['content']
-        )
-        
-        if "error" in analysis_result:
-            print(f"뉴스 분석 중 오류가 발생했습니다: {analysis_result['error']}")
-            continue
-        
-        print(f"분석 결과:")
-        print(f"제목: {analysis_result['title']}")
-        print(f"내용: {analysis_result['content']}")
-        print(f"해시태그: {analysis_result['hashtag']}")
+        if not news_results:
+            print("뉴스를 찾을 수 없습니다.")
+            return
         
         # 카드 뉴스 이미지 생성
-        create_card_news(
-            title=analysis_result['title'],
-            content=analysis_result['content'],
-            hashtags=analysis_result['hashtag'],
-            image_number=i
-        )
-    
-    print("\n모든 작업이 완료되었습니다!")
+        generated_images = create_card_news(news_results)
+        
+        if not generated_images:
+            print("생성된 이미지가 없습니다.")
+            return
+        
+        print(f"\n총 {len(generated_images)}개의 카드 뉴스가 생성되었습니다.")
+        
+        # Instagram 업로드
+        print("\nInstagram에 업로드를 시작합니다...")
+        upload_success = upload_to_instagram(generated_images)
+        
+        if upload_success:
+            print("\n모든 처리가 완료되었습니다!")
+        else:
+            print("\n이미지 생성은 완료되었으나 Instagram 업로드에 실패했습니다.")
+        
+    except Exception as e:
+        print(f"처리 중 오류 발생: {str(e)}")
 
 if __name__ == "__main__":
     main()
