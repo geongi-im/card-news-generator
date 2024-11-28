@@ -13,7 +13,6 @@ ENV/
 
 # Output and temporary files
 output/
-img/
 
 # IDE specific files
 .vscode/
