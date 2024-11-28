@@ -228,24 +228,47 @@ def upload_to_instagram(image_paths):
 def main():
     try:
         # 뉴스 검색
+        print("=== 뉴스 검색 시작 ===")
         fetcher = NewsFetcher()
-        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 2)
+        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 5)
         
         if not news_results:
             print("뉴스를 찾을 수 없습니다.")
             return
+            
+        print(f"총 {len(news_results)}개의 뉴스를 찾았습니다.")
+        print("=== 검색된 뉴스 목록 ===")
+        for idx, news in enumerate(news_results, 1):
+            print(f"\n[뉴스 {idx}]")
+            print(f"제목: {news['title']}")
+            print(f"URL: {news['source_url']}")
+        
+        # 중복 URL 제거
+        unique_news = []
+        seen_urls = set()
+        
+        print("=== 중복 제거 처리 ===")
+        for news in news_results:
+            if news['source_url'] not in seen_urls:
+                unique_news.append(news)
+                seen_urls.add(news['source_url'])
+            else:
+                print(f"중복 제거된 뉴스: {news['title']} ({news['source_url']})")
+        
+        print(f"중복 제거 후 {len(unique_news)}개의 뉴스가 남았습니다.")
         
         # 카드 뉴스 이미지 생성
-        generated_images = create_card_news(news_results)
+        print("=== 이미지 생성 시작 ===")
+        generated_images = create_card_news(unique_news)
         
         if not generated_images:
             print("생성된 이미지가 없습니다.")
             return
         
-        print(f"\n총 {len(generated_images)}개의 카드 뉴스가 생성되었습니다.")
+        print(f"총 {len(generated_images)}개의 카드 뉴스가 생성되었습니다.")
         
         # Instagram 업로드
-        print("\nInstagram에 업로드를 시작합니다...")
+        print("Instagram에 업로드를 시작합니다...")
         upload_success = upload_to_instagram(generated_images)
         
         if upload_success:
