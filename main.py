@@ -207,7 +207,7 @@ def upload_to_instagram(image_paths):
             raise ValueError("DOMAIN_URL이 설정되지 않았습니다. .env 파일을 확인해주세요.")
         
         # 이미지 URL 리스트 생성
-        image_urls = [f"{domain_url}/card_news_generator/{path}" for path in image_paths]
+        image_urls = [f"{domain_url}/card-news-generator/{path}" for path in image_paths]
         
         # Instagram API 초기화 및 업로드
         instagram = InstagramAPI()

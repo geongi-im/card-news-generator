@@ -31,7 +31,7 @@ AI 기반의 자동 증권 뉴스 카드 생성 및 Instagram 포스팅 시스�
 1. 저장소 클론
    ```bash
    git clone [repository-url]
-   cd card_news_generator
+   cd card-news-generator
    ```
 
 2. 가상환경 생성 및 활성화
@@ -78,7 +78,7 @@ AI 기반의 자동 증권 뉴스 카드 생성 및 Instagram 포스팅 시스�
 ## 프로젝트 구조
 
 ```
-card_news_generator/
+card-news-generator/
 ├── main.py              # 메인 실행 파일
 ├── news_fetcher.py      # 뉴스 수집 모듈
 ├── news_analyzer.py     # 뉴스 분석 모듈

@@ -29,6 +29,16 @@ class InstagramAPI:
         Returns:
             dict: API 응답 데이터
         """
+        print(f"\n이미지 URL 확인: {image_url}")
+        
+        # 이미지 URL 접근성 테스트
+        try:
+            test_response = requests.head(image_url)
+            print(f"이미지 URL 접근성: HTTP {test_response.status_code}")
+            print(f"Content-Type: {test_response.headers.get('content-type', 'unknown')}")
+        except Exception as e:
+            print(f"이미지 URL 접근 테스트 실패: {str(e)}")
+        
         container_url = f"{self.base_url}/{self.account_id}/media"
         container_params = {
             "access_token": self.access_token,
@@ -36,9 +46,27 @@ class InstagramAPI:
             "caption": caption
         }
         
-        response = requests.post(container_url, params=container_params)
-        response.raise_for_status()
-        return response.json()
+        print("\nInstagram API 요청:")
+        print(f"URL: {container_url}")
+        print("Parameters:", {k: v if k != 'access_token' else '****' for k, v in container_params.items()})
+        
+        try:
+            response = requests.post(container_url, params=container_params)
+            print(f"\nAPI 응답 상태 코드: {response.status_code}")
+            
+            if response.status_code != 200:
+                print("에러 응답:", response.text)
+            else:
+                print("성공 응답:", response.json())
+                
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"\nAPI 요청 실패: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print("에러 응답:", e.response.text)
+            raise
 
     def _create_carousel_item(self, image_url):
         """
@@ -50,6 +78,16 @@ class InstagramAPI:
         Returns:
             dict: API 응답 데이터
         """
+        print(f"\n이미지 URL 확인: {image_url}")
+        
+        # 이미지 URL 접근성 테스트
+        try:
+            test_response = requests.head(image_url)
+            print(f"이미지 URL 접근성: HTTP {test_response.status_code}")
+            print(f"Content-Type: {test_response.headers.get('content-type', 'unknown')}")
+        except Exception as e:
+            print(f"이미지 URL 접근 테스트 실패: {str(e)}")
+        
         container_url = f"{self.base_url}/{self.account_id}/media"
         container_params = {
             "access_token": self.access_token,
@@ -57,9 +95,27 @@ class InstagramAPI:
             "is_carousel_item": True
         }
         
-        response = requests.post(container_url, params=container_params)
-        response.raise_for_status()
-        return response.json()
+        print("\nInstagram API 요청:")
+        print(f"URL: {container_url}")
+        print("Parameters:", {k: v if k != 'access_token' else '****' for k, v in container_params.items()})
+        
+        try:
+            response = requests.post(container_url, params=container_params)
+            print(f"\nAPI 응답 상태 코드: {response.status_code}")
+            
+            if response.status_code != 200:
+                print("에러 응답:", response.text)
+            else:
+                print("성공 응답:", response.json())
+                
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"\nAPI 요청 실패: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print("에러 응답:", e.response.text)
+            raise
 
     def _create_carousel_container(self, children_ids, caption=""):
         """
@@ -80,9 +136,27 @@ class InstagramAPI:
             "caption": caption
         }
         
-        response = requests.post(container_url, params=container_params)
-        response.raise_for_status()
-        return response.json()
+        print("\nInstagram API 요청:")
+        print(f"URL: {container_url}")
+        print("Parameters:", {k: v if k != 'access_token' else '****' for k, v in container_params.items()})
+        
+        try:
+            response = requests.post(container_url, params=container_params)
+            print(f"\nAPI 응답 상태 코드: {response.status_code}")
+            
+            if response.status_code != 200:
+                print("에러 응답:", response.text)
+            else:
+                print("성공 응답:", response.json())
+                
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"\nAPI 요청 실패: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print("에러 응답:", e.response.text)
+            raise
 
     def _publish_media(self, creation_id):
         """
@@ -100,9 +174,27 @@ class InstagramAPI:
             "creation_id": creation_id
         }
         
-        response = requests.post(publish_url, params=publish_params)
-        response.raise_for_status()
-        return response.json()
+        print("\nInstagram API 요청:")
+        print(f"URL: {publish_url}")
+        print("Parameters:", {k: v if k != 'access_token' else '****' for k, v in publish_params.items()})
+        
+        try:
+            response = requests.post(publish_url, params=publish_params)
+            print(f"\nAPI 응답 상태 코드: {response.status_code}")
+            
+            if response.status_code != 200:
+                print("에러 응답:", response.text)
+            else:
+                print("성공 응답:", response.json())
+                
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"\nAPI 요청 실패: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print("에러 응답:", e.response.text)
+            raise
 
     def _get_formatted_date(self):
         """현재 날짜를 포맷팅된 문자열로 반환"""
