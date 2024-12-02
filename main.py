@@ -45,7 +45,7 @@ def draw_rounded_rectangle(draw, coords, radius, fill):
     draw.ellipse([x1, y2 - diameter, x1 + diameter, y2], fill=fill)  # 좌하단
     draw.ellipse([x2 - diameter, y2 - diameter, x2, y2], fill=fill)  # 우하단
 
-def create_news_card_image(title, content, hashtags, output_path):
+def create_news_card_image(title, content, output_path):
     background_path = os.path.join('img', 'background_card_blank.png')
     korean_font_path = os.path.join('fonts', 'NanumBarunGothicBold.ttf')
 
@@ -59,16 +59,14 @@ def create_news_card_image(title, content, hashtags, output_path):
     width, height = img.size
     
     try:
-        title_font = ImageFont.truetype(korean_font_path, 65)
-        content_font = ImageFont.truetype(korean_font_path, 30)
+        title_font = ImageFont.truetype(korean_font_path, 70)
+        content_font = ImageFont.truetype(korean_font_path, 43)
         source_font = ImageFont.truetype(korean_font_path, 20)
-        hashtag_font = ImageFont.truetype(korean_font_path, 25)
     except:
         print("기본 폰트를 사용합니다.")
         title_font = ImageFont.load_default()
         content_font = ImageFont.load_default()
         source_font = ImageFont.load_default()
-        hashtag_font = ImageFont.load_default()
 
     # 여백 설정
     margin_x = 130
@@ -77,59 +75,47 @@ def create_news_card_image(title, content, hashtags, output_path):
     # 제목 줄바꿈 처리 추가
     title_lines = wrap_text(title, title_font, content_max_width)
     
-    # 내용 줄바꿈 처리
-    content_lines = wrap_text(content, content_font, content_max_width)
+    # 내용 텍스트를 여러 줄로 나누기
+    content_lines = []
+    current_line = ""
     
-    # 내용 텍스트의 전체 높이 계산
-    content_line_height = content_font.size + 5  # 줄 간격 5px
-    total_content_height = len(content_lines) * content_line_height
+    # 단어 단위로 분리
+    words = content.split()
+    
+    for word in words:
+        # 현재 줄에 단어를 추가했을 때의 너비 계산
+        test_line = f"{current_line} {word}".strip()
+        test_bbox = draw.textbbox((0, 0), test_line, font=content_font)
+        test_width = test_bbox[2] - test_bbox[0]
+        
+        # 최대 너비(여백 고려)를 초과하지 않으면 현재 줄에 단어 추가
+        if test_width <= width - (margin_x * 2):
+            current_line = test_line
+        else:
+            # 현재 줄이 비어있지 않으면 줄 추가
+            if current_line:
+                content_lines.append(current_line)
+            current_line = word
+    
+    # 마지막 줄 추가
+    if current_line:
+        content_lines.append(current_line)
+    
+    # 줄 간격 설정
+    content_line_height = 60
     
     # 내용 시작 y 좌표
-    content_y = 530
+    content_y = 360
     
     # 배경 박스의 패딩 설정
     padding_x = 40
     padding_y = 30
     
-    # 해시태그 영역 계산
-    hashtag_y = 405
-    hashtag_font_size = 25
-    hashtag_font = ImageFont.truetype(korean_font_path, hashtag_font_size)
-    
-    # 해시태그 텍스트 너비 계산
-    hashtag_width = get_text_width(hashtags, hashtag_font)
-    
-    # 해시태그 배경 박스 크기 계산
-    hashtag_padding_x = 30
-    hashtag_padding_y = 15
-    
-    # 해시태그 중앙 정렬을 위한 x 좌표 계산
-    hashtag_box_width = hashtag_width + (hashtag_padding_x * 2)
-    hashtag_box_x = (width - hashtag_box_width) // 2
-    
-    # 해시태그 배경 박스 좌표
-    hashtag_box_left = hashtag_box_x
-    hashtag_box_right = hashtag_box_x + hashtag_box_width
-    hashtag_box_top = hashtag_y - hashtag_padding_y
-    hashtag_box_bottom = hashtag_y + hashtag_font_size + hashtag_padding_y
-    
-    # 해시태그 배경 박스 그리기
-    draw_rounded_rectangle(
-        draw,
-        [hashtag_box_left, hashtag_box_top, hashtag_box_right, hashtag_box_bottom],
-        radius=15,
-        fill=(31, 73, 165)
-    )
-    
-    # 해시태그 텍스트 중앙 정렬하여 그리기
-    hashtag_text_x = hashtag_box_x + hashtag_padding_x
-    draw.text((hashtag_text_x, hashtag_y), hashtags, font=hashtag_font, fill='white')
-
     # 내용 영역 배경 박스 그리기
     content_box_left = margin_x - padding_x
     content_box_top = content_y - padding_y
     content_box_right = width - margin_x + padding_x
-    content_box_bottom = content_y + total_content_height + padding_y
+    content_box_bottom = content_y + (len(content_lines) * content_line_height) + padding_y
     
     # 내용 영역 둥근 모서리 배경 박스 그리기
     draw_rounded_rectangle(
@@ -140,7 +126,7 @@ def create_news_card_image(title, content, hashtags, output_path):
     )
 
     # 제목 그리기
-    title_y = 170
+    title_y = 120
     for line in title_lines:
         line_width = get_text_width(line, title_font)
         title_x = (width - line_width) // 2
@@ -178,13 +164,18 @@ def create_card_news(news_results):
                 
             # 이미지 생성
             today = datetime.now().strftime('%Y%m%d')
-            output_path = f"output/{today}_{idx}.png"
+            base_output_path = f"output/{today}_{idx}.png"
             os.makedirs("output", exist_ok=True)
+            
+            output_path = base_output_path
+            counter = 1
+            while os.path.exists(output_path):
+                output_path = f"output/{today}_{idx}({counter}).png"
+                counter += 1
             
             create_news_card_image(
                 title=analysis_result['title'],
                 content=analysis_result['content'],
-                hashtags=analysis_result['hashtag'],
                 output_path=output_path
             )
             
@@ -230,7 +221,7 @@ def main():
         # 뉴스 검색
         print("=== 뉴스 검색 시작 ===")
         fetcher = NewsFetcher()
-        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 5)
+        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 2)
         
         if not news_results:
             print("뉴스를 찾을 수 없습니다.")
