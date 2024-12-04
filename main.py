@@ -6,7 +6,7 @@ from news_fetcher import NewsFetcher
 from news_analyzer import NewsAnalyzer
 import hashlib
 from datetime import datetime
-from post_instagram import InstagramAPI
+from instagram_post import InstagramAPI
 
 def get_text_width(text, font):
     """텍스트의 실제 픽셀 너비를 계산"""
@@ -230,39 +230,12 @@ def create_card_news(news_results):
     
     return generated_images
 
-def upload_to_instagram(image_paths):
-    """생성된 이미지를 Instagram에 업로드"""
-    try:
-        # 도메인 URL 가져오기
-        domain_url = os.getenv("DOMAIN_URL")
-        if not domain_url:
-            raise ValueError("DOMAIN_URL이 설정되지 않았습니다. .env 파일을 확인해주세요.")
-        
-        # 이미지 URL 리스트 생성
-        image_urls = [f"{domain_url}/card-news-generator/{path}" for path in image_paths]
-        
-        # Instagram API 초기화 및 업로드
-        instagram = InstagramAPI()
-        result = instagram.post_image(image_urls)
-        
-        if result["success"]:
-            print(f"Instagram 업로드 성공! 게시물 ID: {result['post_id']}")
-            print(result["status"])
-            return True
-        else:
-            print(f"Instagram 업로드 실패: {result['error']}")
-            return False
-            
-    except Exception as e:
-        print(f"Instagram 업로드 중 오류 발생: {str(e)}")
-        return False
-
 def main():
     try:
         # 뉴스 검색
         print("=== 뉴스 검색 시작 ===")
         fetcher = NewsFetcher()
-        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 2)
+        news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 5)
         
         if not news_results:
             print("뉴스를 찾을 수 없습니다.")
@@ -301,11 +274,31 @@ def main():
         
         # Instagram 업로드
         print("Instagram에 업로드를 시작합니다...")
-        upload_success = upload_to_instagram(generated_images)
         
-        if upload_success:
+        # 도메인 URL 가져오기
+        domain_url = os.getenv("DOMAIN_URL")
+        if not domain_url:
+            raise ValueError("DOMAIN_URL이 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        
+        # 이미지 URL 리스트 생성
+        image_urls = [f"{domain_url}/card-news-generator/{path}" for path in generated_images]
+
+        # 캡션 생성
+        weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
+        now = datetime.now()
+        weekday = weekdays[now.weekday()]
+        caption = f"{now.year}년 {now.month:02d}월 {now.day:02d}일 {weekday} MQ 글로벌 증권가 뉴스"
+        
+        # Instagram API 초기화 및 업로드
+        instagram = InstagramAPI()
+        result = instagram.post_image(image_urls, caption)
+        
+        if result["success"]:
+            print(f"Instagram 업로드 성공! 게시물 ID: {result['post_id']}")
+            print(result["status"])
             print("\n모든 처리가 완료되었습니다!")
         else:
+            print(f"Instagram 업로드 실패: {result['error']}")
             print("\n이미지 생성은 완료되었으나 Instagram 업로드에 실패했습니다.")
         
     except Exception as e:

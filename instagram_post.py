@@ -221,14 +221,7 @@ class InstagramAPI:
             if hasattr(e, 'response') and e.response is not None:
                 print("에러 응답:", e.response.text)
             raise
-
-    def _get_formatted_date(self):
-        """현재 날짜를 포맷팅된 문자열로 반환"""
-        weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-        now = datetime.now()
-        weekday = weekdays[now.weekday()]
-        return f"{now.year}년 {now.month:02d}월 {now.day:02d}일 {weekday} MQ 글로벌 증권가 뉴스"
-
+        
     def post_image(self, image_paths, caption=None):
         """
         Instagram에 이미지를 포스팅합니다.
@@ -240,11 +233,7 @@ class InstagramAPI:
         Returns:
             dict: 성공 시 {"success": True, "post_id": "..."}, 실패 시 {"success": False, "error": "에러 메시지"}
         """
-        try:
-            # 캡션이 None이면 현재 날짜로 생성
-            if caption is None:
-                caption = self._get_formatted_date()
-            
+        try:            
             # 단일 이미지인 경우 리스트로 변환
             if isinstance(image_paths, str):
                 image_paths = [image_paths]
