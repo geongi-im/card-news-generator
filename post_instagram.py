@@ -2,6 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from datetime import datetime
+import time  # 상단에 time 모듈 import 추가
 
 # 환경 변수 로드
 load_dotenv()
@@ -18,6 +19,39 @@ class InstagramAPI:
         self.api_version = "v18.0"
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
 
+    def _test_image_url(self, image_url, max_retries=5, delay=2):
+        """
+        이미지 URL 접근성 테스트를 재시도하는 헬퍼 함수
+        
+        Args:
+            image_url (str): 테스트할 이미지 URL
+            max_retries (int): 최대 재시도 횟수
+            delay (int): 재시도 간 대기 시간(초)
+            
+        Returns:
+            bool: 접근 가능하면 True, 아니면 False
+        """
+        for attempt in range(max_retries):
+            try:
+                test_response = requests.head(image_url)
+                print(f"시도 {attempt + 1}/{max_retries} - HTTP 상태: {test_response.status_code}")
+                print(f"Content-Type: {test_response.headers.get('content-type', 'unknown')}")
+                
+                if test_response.status_code == 200:
+                    return True
+                    
+                if attempt < max_retries - 1:  # 마지막 시도가 아니면 대기
+                    print(f"{delay}초 후 재시도...")
+                    time.sleep(delay)
+                    
+            except Exception as e:
+                print(f"시도 {attempt + 1}/{max_retries} - 실패: {str(e)}")
+                if attempt < max_retries - 1:
+                    print(f"{delay}초 후 재시도...")
+                    time.sleep(delay)
+        
+        return False
+
     def _create_single_media(self, image_url, caption=""):
         """
         단일 이미지 미디어 컨테이너 생성
@@ -31,13 +65,9 @@ class InstagramAPI:
         """
         print(f"\n이미지 URL 확인: {image_url}")
         
-        # 이미지 URL 접근성 테스트
-        try:
-            test_response = requests.head(image_url)
-            print(f"이미지 URL 접근성: HTTP {test_response.status_code}")
-            print(f"Content-Type: {test_response.headers.get('content-type', 'unknown')}")
-        except Exception as e:
-            print(f"이미지 URL 접근 테스트 실패: {str(e)}")
+        # 이미지 URL 접근성 테스트 (재시도 로직 적용)
+        if not self._test_image_url(image_url):
+            raise Exception("이미지 URL에 접근할 수 없습니다.")
         
         container_url = f"{self.base_url}/{self.account_id}/media"
         container_params = {
@@ -80,13 +110,9 @@ class InstagramAPI:
         """
         print(f"\n이미지 URL 확인: {image_url}")
         
-        # 이미지 URL 접근성 테스트
-        try:
-            test_response = requests.head(image_url)
-            print(f"이미지 URL 접근성: HTTP {test_response.status_code}")
-            print(f"Content-Type: {test_response.headers.get('content-type', 'unknown')}")
-        except Exception as e:
-            print(f"이미지 URL 접근 테스트 실패: {str(e)}")
+        # 이미지 URL 접근성 테스트 (재시도 로직 적용)
+        if not self._test_image_url(image_url):
+            raise Exception("이미지 URL에 접근할 수 없습니다.")
         
         container_url = f"{self.base_url}/{self.account_id}/media"
         container_params = {
