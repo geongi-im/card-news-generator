@@ -45,6 +45,30 @@ def draw_rounded_rectangle(draw, coords, radius, fill):
     draw.ellipse([x1, y2 - diameter, x1 + diameter, y2], fill=fill)  # 좌하단
     draw.ellipse([x2 - diameter, y2 - diameter, x2, y2], fill=fill)  # 우하단
 
+def get_optimal_font_size(text, max_width, max_height, font_path, start_size=70):
+    """텍스트에 맞는 최적의 폰트 크기를 찾습니다."""
+    font_size = start_size
+    min_size = 40  # 최소 폰트 크기
+    
+    while font_size > min_size:
+        font = ImageFont.truetype(font_path, font_size)
+        lines = wrap_text(text, font, max_width)
+        
+        # 전체 텍스트 높이 계산
+        total_height = len(lines) * (font_size + 10)  # 줄 간격 10
+        
+        # 텍스트가 최대 높이와 너비 내에 들어가는지 확인
+        if total_height <= max_height:
+            return font_size, lines, total_height
+        
+        font_size -= 5
+    
+    # 최소 폰트 크기로도 맞지 않으면 최소 크기 반환
+    font = ImageFont.truetype(font_path, min_size)
+    lines = wrap_text(text, font, max_width)
+    total_height = len(lines) * (min_size + 10)
+    return min_size, lines, total_height
+
 def create_news_card_image(title, content, output_path):
     background_path = os.path.join('img', 'background_card_blank.png')
     korean_font_path = os.path.join('fonts', 'NanumBarunGothicBold.ttf')
@@ -72,8 +96,28 @@ def create_news_card_image(title, content, output_path):
     margin_x = 130
     content_max_width = width - (margin_x * 2)
     
-    # 제목 줄바꿈 처리 추가
-    title_lines = wrap_text(title, title_font, content_max_width)
+    # 제목 줄역 설정
+    title_max_width = width - (margin_x * 2)
+    title_max_height = 200  # 제목 영역 최대 높이
+    
+    # 최적의 제목 폰트 크기 찾기
+    title_font_size, title_lines, title_total_height = get_optimal_font_size(
+        title,
+        title_max_width,
+        title_max_height,
+        korean_font_path
+    )
+    
+    title_font = ImageFont.truetype(korean_font_path, title_font_size)
+    
+    # 제목 시작 y좌표 (120으로 고정)
+    title_y = 120
+    
+    # 내용 영역 시작 y좌표 동적 조정
+    content_y = max(360, title_y + title_total_height + 40)  # 최소 360px, 제목 아래 40px 여백
+    
+    # 내용 폰트 및 줄바꿈 처리
+    content_font = ImageFont.truetype(korean_font_path, 43)
     
     # 내용 텍스트를 여러 줄로 나누기
     content_lines = []
@@ -104,9 +148,6 @@ def create_news_card_image(title, content, output_path):
     # 줄 간격 설정
     content_line_height = 60
     
-    # 내용 시작 y 좌표
-    content_y = 360
-    
     # 배경 박스의 패딩 설정
     padding_x = 40
     padding_y = 30
@@ -126,12 +167,12 @@ def create_news_card_image(title, content, output_path):
     )
 
     # 제목 그리기
-    title_y = 120
+    current_title_y = title_y
     for line in title_lines:
         line_width = get_text_width(line, title_font)
         title_x = (width - line_width) // 2
-        draw.text((title_x, title_y), line, font=title_font, fill='black')
-        title_y += title_font.size + 10
+        draw.text((title_x, current_title_y), line, font=title_font, fill='black')
+        current_title_y += title_font_size + 10
 
     # 내용 그리기
     current_y = content_y
