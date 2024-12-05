@@ -7,6 +7,9 @@ from news_analyzer import NewsAnalyzer
 import hashlib
 from datetime import datetime
 from instagram_post import InstagramAPI
+import logging
+from logging.handlers import RotatingFileHandler
+import sys
 
 def get_text_width(text, font):
     """텍스트의 실제 픽셀 너비를 계산"""
@@ -116,7 +119,7 @@ def create_news_card_image(title, content, output_path):
     # 내용 영역 시작 y좌표 동적 조정
     content_y = max(360, title_y + title_total_height + 40)  # 최소 360px, 제목 아래 40px 여백
     
-    # 내용 폰트 및 줄바꿈 처리
+    # 내용 폰��� 및 줄바꿈 처리
     content_font = ImageFont.truetype(korean_font_path, 43)
     
     # 내용 텍스트를 여러 줄로 나누기
@@ -187,26 +190,66 @@ def create_news_card_image(title, content, output_path):
     # 이미지 저장
     img.save(output_path)
 
+def setup_logger():
+    """로깅 설정"""
+    # 로그 폴더 생성
+    log_dir = "log"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # 오늘 날짜로 로그 파일명 생성
+    today = datetime.now().strftime('%Y%m%d')
+    log_file = os.path.join(log_dir, f'news_generator_{today}.log')
+    
+    # 로거 생성
+    logger = logging.getLogger('NewsGenerator')
+    logger.setLevel(logging.INFO)
+    
+    # 파일 핸들러 설정 (최대 10MB, 백업 5개)
+    file_handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.INFO)
+    
+    # 콘솔 핸들러 설정
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    
+    # 포맷터 설정
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # 핸들러 추가
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
 def create_card_news(news_results):
     """뉴스 결과를 기반으로 카드 뉴스 이미지 생성"""
     generated_images = []
+    logger = logging.getLogger('NewsGenerator')
     
     for idx, news in enumerate(news_results, 1):
         try:
-            print(f"=== 뉴스 {idx} 처리 중 ===")
+            logger.info(f"=== 뉴스 {idx} 처리 중 ===")
             
             # 뉴스 분석
             analyzer = NewsAnalyzer()
             analysis_result = analyzer.analyze_news(news['title'], news['content'])
             
             if not analysis_result:
-                print(f"뉴스 {idx} 분석 실패")
+                logger.error(f"뉴스 {idx} 분석 실패")
                 continue
                 
             # 이미지 생성
             today = datetime.now().strftime('%Y%m%d')
             base_output_path = f"output/{today}_{idx}.png"
             os.makedirs("output", exist_ok=True)
+            os.chmod("output", 0o777)  # 폴더 권한을 777로 설정
             
             output_path = base_output_path
             counter = 1
@@ -222,58 +265,59 @@ def create_card_news(news_results):
             
             # 생성된 이미지 경로 저장
             generated_images.append(output_path)
-            print(f"뉴스 카드 {idx} 생성 완료: {output_path}")
+            logger.info(f"뉴스 카드 {idx} 생성 완료: {output_path}")
             
         except Exception as e:
-            print(f"뉴스 {idx} 처리 중 오류 발생: {str(e)}")
+            logger.error(f"뉴스 {idx} 처리 중 오류 발생: {str(e)}")
             continue
     
     return generated_images
 
 def main():
+    logger = logging.getLogger('NewsGenerator')
     try:
         # 뉴스 검색
-        print("=== 뉴스 검색 시작 ===")
+        logger.info("=== 뉴스 검색 시작 ===")
         fetcher = NewsFetcher()
         news_results = fetcher.get_formatted_news("증권가 빅뉴스 핫이슈", 5)
         
         if not news_results:
-            print("뉴스를 찾을 수 없습니다.")
+            logger.error("뉴스를 찾을 수 없습니다.")
             return
             
-        print(f"총 {len(news_results)}개의 뉴스를 찾았습니다.")
-        print("=== 검색된 뉴스 목록 ===")
+        logger.info(f"총 {len(news_results)}개의 뉴스를 찾았습니다.")
+        logger.info("=== 검색된 뉴스 목록 ===")
         for idx, news in enumerate(news_results, 1):
-            print(f"\n[뉴스 {idx}]")
-            print(f"제목: {news['title']}")
-            print(f"URL: {news['source_url']}")
+            logger.info(f"\n[뉴스 {idx}]")
+            logger.info(f"제목: {news['title']}")
+            logger.info(f"URL: {news['source_url']}")
         
         # 중복 URL 제거
         unique_news = []
         seen_urls = set()
         
-        print("=== 중복 제거 처리 ===")
+        logger.info("=== 중복 제거 처리 ===")
         for news in news_results:
             if news['source_url'] not in seen_urls:
                 unique_news.append(news)
                 seen_urls.add(news['source_url'])
             else:
-                print(f"중복 제거된 뉴스: {news['title']} ({news['source_url']})")
+                logger.info(f"중복 제거된 뉴스: {news['title']} ({news['source_url']})")
         
-        print(f"중복 제거 후 {len(unique_news)}개의 뉴스가 남았습니다.")
+        logger.info(f"중복 제거 후 {len(unique_news)}개의 뉴스가 남았습니다.")
         
         # 카드 뉴스 이미지 생성
-        print("=== 이미지 생성 시작 ===")
+        logger.info("=== 이미지 생성 시작 ===")
         generated_images = create_card_news(unique_news)
         
         if not generated_images:
-            print("생성된 이미지가 없습니다.")
+            logger.warning("생성된 이미지가 없습니다.")
             return
         
-        print(f"총 {len(generated_images)}개의 카드 뉴스가 생성되었습니다.")
+        logger.info(f"총 {len(generated_images)}개의 카드 뉴스가 생성되었습니다.")
         
         # Instagram 업로드
-        print("Instagram에 업로드를 시작합니다...")
+        logger.info("Instagram에 업로드를 시작합니다...")
         
         # 도메인 URL 가져오기
         domain_url = os.getenv("DOMAIN_URL")
@@ -294,15 +338,17 @@ def main():
         result = instagram.post_image(image_urls, caption)
         
         if result["success"]:
-            print(f"Instagram 업로드 성공! 게시물 ID: {result['post_id']}")
-            print(result["status"])
-            print("\n모든 처리가 완료되었습니다!")
+            logger.info(f"Instagram 업로드 성공! 게시물 ID: {result['post_id']}")
+            logger.info(result["status"])
+            logger.info("\n모든 처리가 완료되었습니다!")
         else:
-            print(f"Instagram 업로드 실패: {result['error']}")
-            print("\n이미지 생성은 완료되었으나 Instagram 업로드에 실패했습니다.")
+            logger.error(f"Instagram 업로드 실패: {result['error']}")
+            logger.warning("\n이미지 생성은 완료되었으나 Instagram 업로드에 실패했습니다.")
         
     except Exception as e:
-        print(f"처리 중 오류 발생: {str(e)}")
+        logger.error(f"처리 중 오류 발생: {str(e)}")
 
 if __name__ == "__main__":
+    # 로거 설정
+    logger = setup_logger()
     main()

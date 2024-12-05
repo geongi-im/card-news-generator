@@ -5,6 +5,7 @@ from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 import os
 import json
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -12,10 +13,12 @@ load_dotenv()
 class NewsAnalyzer:
     def __init__(self):
         """Initialize the NewsAnalyzer with Gemini Pro model"""
+        self.logger = logging.getLogger('NewsGenerator')
         
         # API 키 확인
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
+            self.logger.error("환경 변수 GOOGLE_API_KEY가 설정되지 않았습니다.")
             raise ValueError("환경 변수 GOOGLE_API_KEY가 설정되지 않았습니다.")
 
         self.llm = GoogleGenerativeAI(
@@ -66,6 +69,8 @@ class NewsAnalyzer:
     
     def analyze_news(self, title, content):
         try:
+            self.logger.info(f"뉴스 분석 시작 - 제목: {title[:30]}...")
+            
             # LLM 체인 실행
             response_text = self.chain.invoke({
                 "news_title": title,
@@ -82,22 +87,23 @@ class NewsAnalyzer:
             try:
                 parsed_result = json.loads(response_text)
             except json.JSONDecodeError as e:
-                print(f"JSON 파싱 오류: {e}")
-                print(f"응답 텍스트: {response_text}")
+                self.logger.error(f"JSON 파싱 오류: {e}")
+                self.logger.error(f"응답 텍스트: {response_text}")
                 return {"error": "JSON 파싱 오류"}
             
             # Ensure all required fields are present
             required_fields = ['title', 'content']
             for field in required_fields:
                 if field not in parsed_result:
-                    print(f"필수 필드 누락: {field}")
-                    print(f"파싱된 결과: {parsed_result}")
+                    self.logger.error(f"필수 필드 누락: {field}")
+                    self.logger.error(f"파싱된 결과: {parsed_result}")
                     return {"error": f"필수 필드 누락: {field}"}
             
+            self.logger.info("뉴스 분석 완료")
             return parsed_result
             
         except Exception as e:
-            print(f"분석 중 오류 발생: {str(e)}")
+            self.logger.error(f"분석 중 오류 발생: {str(e)}")
             return {"error": f"분석 중 오류 발생: {str(e)}"}
 
 # Usage example

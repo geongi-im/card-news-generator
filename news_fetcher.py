@@ -3,33 +3,24 @@ from dotenv import load_dotenv
 from tavily import TavilyClient
 from datetime import datetime, timedelta
 import requests
+import logging
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
 class NewsFetcher:
     def __init__(self):
+        self.logger = logging.getLogger('NewsGenerator')
         self.api_key = os.getenv('TAVILY_API_KEY')
         if not self.api_key:
+            self.logger.error("TAVILY_API_KEY가 .env 파일에 설정되지 않았습니다.")
             raise ValueError("TAVILY_API_KEY가 .env 파일에 설정되지 않았습니다.")
         self.client = TavilyClient(api_key=self.api_key)
 
     def fetch_news(self, query, max_results=5):
-        """
-        주어진 쿼리로 뉴스를 검색합니다.
-        
-        Args:
-            query (str): 검색할 뉴스 키워드
-            max_results (int): 가져올 최대 뉴스 개수
-            
-        Returns:
-            list: 뉴스 기사 목록 (각 기사는 딕셔너리 형태)
-        """
+        """주어진 쿼리로 뉴스를 검색합니다."""
         try:
-            # 일주일 전 날짜와 오늘 날짜 설정
-            # today = datetime.now()
-            # week_ago = today - timedelta(days=7)
-            # date_range = f"date:{week_ago.strftime('%Y-%m-%d')}..{today.strftime('%Y-%m-%d')}"
+            self.logger.info(f"뉴스 검색 시작: {query}")
             
             # Tavily API 호출
             response = self.client.search(
@@ -53,25 +44,19 @@ class NewsFetcher:
                 }
                 news_articles.append(article)
 
+            self.logger.info(f"검색된 뉴스 개수: {len(news_articles)}")
             return news_articles
 
         except Exception as e:
-            print(f"뉴스 검색 중 오류 발생: {str(e)}")
+            self.logger.error(f"뉴스 검색 중 오류 발생: {str(e)}")
             return []
 
     def get_formatted_news(self, query, max_results=5):
-        """
-        뉴스를 검색하고 포맷팅된 결과를 반환합니다.
-        
-        Args:
-            query (str): 검색할 뉴스 키워드
-            max_results (int): 가져올 최대 뉴스 개수
-            
-        Returns:
-            list: 포맷팅된 뉴스 기사 목록
-        """
+        """뉴스를 검색하고 포맷팅된 결과를 반환합니다."""
+        self.logger.info(f"포맷팅된 뉴스 검색 시작: {query}")
         news_list = self.fetch_news(query, max_results)
         if not news_list:
+            self.logger.warning("검색된 뉴스가 없습니다.")
             return None
         
         formatted_news = []
@@ -81,6 +66,8 @@ class NewsFetcher:
                 'content': news.get('content', '내용 없음'),
                 'source_url': news.get('url', '')
             })
+        
+        self.logger.info(f"포맷팅된 뉴스 개수: {len(formatted_news)}")
         return formatted_news
 
 def main():
